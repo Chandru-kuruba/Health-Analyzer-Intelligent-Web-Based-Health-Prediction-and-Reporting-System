@@ -393,7 +393,17 @@ class HealthAnalyzerAPITester:
             "new_password": "NewTestPass123!"
         }
         
-        response = self.make_request('POST', f'auth/change-password?token={self.token}', password_data)
+        # Create headers with token as query param
+        headers_with_token = {}
+        if self.token:
+            headers_with_token['Authorization'] = f'Bearer {self.token}'
+        
+        response = requests.post(
+            f"{self.base_url}/api/auth/change-password",
+            params={"token": self.token},
+            json=password_data,
+            headers={'Content-Type': 'application/json'}
+        )
         if response and response.status_code == 200:
             return self.log_result(
                 "Password Change", 
