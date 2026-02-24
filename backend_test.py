@@ -344,7 +344,7 @@ class HealthAnalyzerAPITester:
         test_image_b64 = self.create_test_image()
         
         image_data = {
-            "image": f"data:image/jpeg;base64,{test_image_b64}"
+            "image_data": f"data:image/jpeg;base64,{test_image_b64}"
         }
         
         response = self.make_request('POST', 'image/analyze', image_data)
