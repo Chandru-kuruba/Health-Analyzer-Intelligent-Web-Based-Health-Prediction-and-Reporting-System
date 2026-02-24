@@ -470,9 +470,16 @@ class HealthAnalyzerAPITester:
         
         # Authentication tests
         print("\n--- Authentication Tests ---")
-        self.test_user_login()  # Use existing test user
-        self.test_admin_login()
-        self.test_protected_endpoint()
+        
+        # Try admin login first since it worked
+        if self.test_admin_login():
+            self.test_protected_endpoint()
+            
+        # Try test user login, if fails try registration
+        if not self.test_user_login():
+            print("Test user login failed, trying registration...")
+            if self.test_user_registration():
+                self.test_protected_endpoint()
         
         # Core functionality tests (requires authentication)
         if self.token:
