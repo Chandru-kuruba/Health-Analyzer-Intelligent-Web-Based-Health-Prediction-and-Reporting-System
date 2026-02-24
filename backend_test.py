@@ -197,7 +197,7 @@ class HealthAnalyzerAPITester:
             "message": "What causes headaches?"
         }
         
-        response = self.make_request('POST', 'chat/message', chat_data)
+        response = self.make_request('POST', 'chat', chat_data)
         if response and response.status_code == 200:
             data = response.json()
             message_content = data.get('message', {}).get('content', '')
@@ -247,7 +247,7 @@ class HealthAnalyzerAPITester:
             "message": "What is JavaScript?"
         }
         
-        response = self.make_request('POST', 'chat/message', chat_data)
+        response = self.make_request('POST', 'chat', chat_data)
         if response and response.status_code == 200:
             data = response.json()
             message_content = data.get('message', {}).get('content', '')
@@ -288,7 +288,7 @@ class HealthAnalyzerAPITester:
             "message": "Who created this?"
         }
         
-        response = self.make_request('POST', 'chat/message', chat_data)
+        response = self.make_request('POST', 'chat', chat_data)
         if response and response.status_code == 200:
             data = response.json()
             message_content = data.get('message', {}).get('content', '')
