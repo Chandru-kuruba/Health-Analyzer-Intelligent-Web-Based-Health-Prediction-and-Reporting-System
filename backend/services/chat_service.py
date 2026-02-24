@@ -1,15 +1,16 @@
 """
-AI Health Chat Service - Using Standard OpenAI API
+AI Health Chat Service - Using Emergent LLM Integration
 Context-aware conversational health assistant
 """
 import os
 import re
 import logging
+import uuid
 from typing import Optional, Dict, Any, List
 from pathlib import Path
 from datetime import datetime, timezone
 from dotenv import load_dotenv
-from openai import OpenAI
+from emergentintegrations.llm.chat import LlmChat, UserMessage
 
 # Load environment
 ROOT_DIR = Path(__file__).parent.parent
@@ -121,13 +122,11 @@ def clean_markdown(text: str) -> str:
 
 
 class ChatService:
-    """AI-powered health chat service using standard OpenAI API"""
+    """AI-powered health chat service using Emergent LLM integration"""
     
     def __init__(self):
-        self.api_key = os.environ.get('OPENAI_API_KEY', '')
-        self.client = None
-        if self.api_key:
-            self.client = OpenAI(api_key=self.api_key)
+        self.api_key = os.environ.get('EMERGENT_LLM_KEY', '')
+        self.model_provider = "openai"
         self.model_name = "gpt-4o"
     
     def _is_founder_query(self, message: str) -> bool:
@@ -241,37 +240,38 @@ Remember, I'm an AI assistant and cannot replace professional medical advice."""
             return self._create_emergency_response(), True
         
         try:
-            if not self.client:
-                logger.error("OpenAI API key not configured")
+            if not self.api_key:
+                logger.error("Emergent LLM API key not configured")
                 return self._fallback_response(), False
             
             # Build system prompt with context
             system_prompt = f"{CHAT_SYSTEM_PROMPT}\n\n--- User Health Context ---\n{health_context}"
             
-            # Build messages array
-            messages = [{"role": "system", "content": system_prompt}]
+            # Create new LlmChat instance for this request
+            session_id = str(uuid.uuid4())
+            chat = LlmChat(
+                api_key=self.api_key,
+                session_id=session_id,
+                system_message=system_prompt
+            ).with_model(self.model_provider, self.model_name)
             
-            # Add conversation history (last 10 messages)
+            # Build conversation context (last few messages for context)
+            conversation_context = ""
             if conversation_history:
-                recent_messages = conversation_history[-10:]
+                recent_messages = conversation_history[-6:]
                 for msg in recent_messages:
-                    messages.append({
-                        "role": msg.get('role', 'user'),
-                        "content": msg.get('content', '')
-                    })
+                    role = msg.get('role', 'user')
+                    content = msg.get('content', '')
+                    conversation_context += f"\n{role.capitalize()}: {content}"
             
-            # Add current user message
-            messages.append({"role": "user", "content": user_message})
+            # Create message with context
+            full_message = user_message
+            if conversation_context:
+                full_message = f"Previous conversation context:{conversation_context}\n\nCurrent question: {user_message}"
             
             # Get AI response
-            response = self.client.chat.completions.create(
-                model=self.model_name,
-                messages=messages,
-                max_tokens=1000,
-                temperature=0.7
-            )
-            
-            response_text = response.choices[0].message.content
+            llm_message = UserMessage(text=full_message)
+            response_text = await chat.send_message(llm_message)
             
             # Clean markdown from response
             response_text = clean_markdown(response_text)
