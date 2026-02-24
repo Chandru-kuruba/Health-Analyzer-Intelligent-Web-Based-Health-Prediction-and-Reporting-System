@@ -1,15 +1,16 @@
 """
-AI Medical Triage Service - Using Standard OpenAI API
-Uses OpenAI GPT-4o for intelligent medical analysis and recommendations
+AI Medical Triage Service - Using Emergent LLM Integration
+Uses GPT-4o for intelligent medical analysis and recommendations
 """
 import os
 import json
 import re
 import logging
+import uuid
 from typing import Optional, Dict, Any, Tuple
 from dotenv import load_dotenv
 from pathlib import Path
-from openai import OpenAI
+from emergentintegrations.llm.chat import LlmChat, UserMessage
 
 # Load environment
 ROOT_DIR = Path(__file__).parent.parent
@@ -61,7 +62,7 @@ def clean_markdown(text: str) -> str:
 
 
 class AITriageService:
-    """AI-powered medical triage analysis service using standard OpenAI API"""
+    """AI-powered medical triage analysis service using Emergent LLM integration"""
     
     # Critical thresholds for safety override
     CRITICAL_BP_SYSTOLIC = 170
@@ -78,10 +79,8 @@ class AITriageService:
     ]
     
     def __init__(self):
-        self.api_key = os.environ.get('OPENAI_API_KEY', '')
-        self.client = None
-        if self.api_key:
-            self.client = OpenAI(api_key=self.api_key)
+        self.api_key = os.environ.get('EMERGENT_LLM_KEY', '')
+        self.model_provider = "openai"
         self.model_name = "gpt-4o"
         
     def _check_critical_thresholds(
@@ -157,7 +156,7 @@ Blood Pressure: {bp_str}
 Symptoms: {symptoms if symptoms else "None reported"}
 Image Analysis Result: {image_str}
 
-Please analyze this patient's health data and provide a comprehensive triage assessment."""
+Please analyze this patient's health data and provide a comprehensive triage assessment in JSON format."""
         
         return prompt
     
@@ -289,25 +288,21 @@ Please analyze this patient's health data and provide a comprehensive triage ass
         
         # Step 3: Call AI
         try:
-            if not self.client:
-                logger.error("OpenAI API key not configured")
+            if not self.api_key:
+                logger.error("Emergent LLM API key not configured")
                 return self._create_fallback_response(bmi, bmi_category, blood_sugar, bp_systolic, symptoms)
             
-            # Create messages
-            messages = [
-                {"role": "system", "content": MEDICAL_SYSTEM_PROMPT},
-                {"role": "user", "content": patient_prompt}
-            ]
+            # Create new LlmChat instance
+            session_id = str(uuid.uuid4())
+            chat = LlmChat(
+                api_key=self.api_key,
+                session_id=session_id,
+                system_message=MEDICAL_SYSTEM_PROMPT
+            ).with_model(self.model_provider, self.model_name)
             
             # Get AI response
-            response = self.client.chat.completions.create(
-                model=self.model_name,
-                messages=messages,
-                max_tokens=1500,
-                temperature=0.3
-            )
-            
-            response_text = response.choices[0].message.content
+            llm_message = UserMessage(text=patient_prompt)
+            response_text = await chat.send_message(llm_message)
             
             # Step 4: Parse and validate JSON response
             ai_response = self._parse_ai_response(response_text)
