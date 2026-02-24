@@ -442,7 +442,7 @@ class HealthAnalyzerAPITester:
             }
         }
         
-        response = self.make_request('POST', 'health/assessment', assessment_data)
+        response = self.make_request('POST', 'health/assess', assessment_data)
         if response and response.status_code in [200, 201]:
             data = response.json()
             return self.log_result(
