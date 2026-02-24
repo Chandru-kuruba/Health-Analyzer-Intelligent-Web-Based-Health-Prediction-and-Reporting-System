@@ -426,20 +426,17 @@ class HealthAnalyzerAPITester:
         
         # Sample health assessment data
         assessment_data = {
+            "full_name": "Test Patient",
+            "email": "test@example.com",
             "age": 30,
-            "gender": "Male",
-            "height": 175,
-            "weight": 70,
+            "dob": "1993-01-01",
+            "gender": "male",
+            "height": 175.0,
+            "weight": 70.0,
             "blood_pressure_systolic": 120,
             "blood_pressure_diastolic": 80,
-            "blood_sugar_level": 90,
-            "symptoms": ["headache", "fatigue"],
-            "medical_history": ["none"],
-            "lifestyle_factors": {
-                "smoking": False,
-                "alcohol": "occasional",
-                "exercise": "regular"
-            }
+            "blood_sugar_level": 90.0,
+            "symptoms": "headache, fatigue"
         }
         
         response = self.make_request('POST', 'health/assess', assessment_data)
