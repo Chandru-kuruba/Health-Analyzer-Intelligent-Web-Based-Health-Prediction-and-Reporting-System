@@ -1,6 +1,6 @@
 """
-AI Image Analysis Service - Using Standard OpenAI API
-Uses OpenAI GPT-4o Vision for medical image analysis
+AI Image Analysis Service - Using Emergent LLM Integration
+Uses GPT-4o Vision for medical image analysis
 """
 import os
 import json
@@ -11,7 +11,7 @@ import uuid
 from typing import Optional, Dict, Any
 from pathlib import Path
 from dotenv import load_dotenv
-from openai import OpenAI
+from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
 
 # Load environment
 ROOT_DIR = Path(__file__).parent.parent
@@ -83,15 +83,13 @@ def clean_markdown(text: str) -> str:
 
 
 class ImageAnalysisService:
-    """AI-powered medical image analysis service using standard OpenAI API"""
+    """AI-powered medical image analysis service using Emergent LLM integration"""
     
     UPLOADS_DIR = Path("/app/uploads/images")
     
     def __init__(self):
-        self.api_key = os.environ.get('OPENAI_API_KEY', '')
-        self.client = None
-        if self.api_key:
-            self.client = OpenAI(api_key=self.api_key)
+        self.api_key = os.environ.get('EMERGENT_LLM_KEY', '')
+        self.model_provider = "openai"
         self.model_name = "gpt-4o"
         # Ensure uploads directory exists
         self.UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
@@ -191,7 +189,7 @@ class ImageAnalysisService:
     
     async def analyze_image(self, base64_data: str) -> Dict[str, Any]:
         """
-        Analyze medical image using GPT-4o Vision
+        Analyze medical image using GPT-4o Vision via Emergent LLM
         Returns structured analysis result
         """
         # Validate image
@@ -205,46 +203,29 @@ class ImageAnalysisService:
             clean_base64 = clean_base64.split(',', 1)[1]
         
         try:
-            if not self.client:
-                logger.error("OpenAI API key not configured")
+            if not self.api_key:
+                logger.error("Emergent LLM API key not configured")
                 return self._create_fallback_response()
             
-            # Construct the image URL for OpenAI
-            image_url = f"data:{mime_type};base64,{clean_base64}"
+            # Create new LlmChat instance
+            session_id = str(uuid.uuid4())
+            chat = LlmChat(
+                api_key=self.api_key,
+                session_id=session_id,
+                system_message=IMAGE_ANALYSIS_SYSTEM_PROMPT
+            ).with_model(self.model_provider, self.model_name)
+            
+            # Create image content
+            image_content = ImageContent(image_base64=clean_base64)
             
             # Create message with image
-            messages = [
-                {
-                    "role": "system",
-                    "content": IMAGE_ANALYSIS_SYSTEM_PROMPT
-                },
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": "Please analyze this image. If it's a medical image showing a body condition, provide detailed medical analysis. If it's not medical-related, indicate that clearly."
-                        },
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": image_url,
-                                "detail": "high"
-                            }
-                        }
-                    ]
-                }
-            ]
-            
-            # Get AI response
-            response = self.client.chat.completions.create(
-                model=self.model_name,
-                messages=messages,
-                max_tokens=1500,
-                temperature=0.3
+            llm_message = UserMessage(
+                text="Please analyze this image. If it's a medical image showing a body condition, provide detailed medical analysis in JSON format. If it's not medical-related, indicate that clearly in JSON format.",
+                file_contents=[image_content]
             )
             
-            response_text = response.choices[0].message.content
+            # Get AI response
+            response_text = await chat.send_message(llm_message)
             
             # Parse response
             result = self._parse_response(response_text)
