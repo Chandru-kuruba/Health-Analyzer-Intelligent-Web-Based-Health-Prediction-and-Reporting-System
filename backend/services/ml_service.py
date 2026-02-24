@@ -1,6 +1,6 @@
 """
 ML Service - Image processing utilities
-Uses OpenAI GPT-4o for image analysis
+Uses Emergent LLM for image analysis
 """
 import os
 import json
@@ -10,7 +10,7 @@ import uuid
 from typing import Optional, Dict, Any
 from pathlib import Path
 from dotenv import load_dotenv
-from openai import OpenAI
+from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
 
 # Load environment
 ROOT_DIR = Path(__file__).parent.parent
@@ -37,15 +37,13 @@ If this is not a medical image, return:
 
 
 class MLService:
-    """ML service for image classification using OpenAI"""
+    """ML service for image classification using Emergent LLM"""
     
     UPLOADS_DIR = Path("/app/uploads/images")
     
     def __init__(self):
-        self.api_key = os.environ.get('OPENAI_API_KEY', '')
-        self.client = None
-        if self.api_key:
-            self.client = OpenAI(api_key=self.api_key)
+        self.api_key = os.environ.get('EMERGENT_LLM_KEY', '')
+        self.model_provider = "openai"
         self.model_name = "gpt-4o"
         self.UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
     
@@ -87,44 +85,34 @@ class MLService:
     async def analyze_image(self, base64_data: str) -> Dict[str, Any]:
         """Analyze image and return classification"""
         try:
-            if not self.client:
-                logger.error("OpenAI API key not configured")
+            if not self.api_key:
+                logger.error("Emergent LLM API key not configured")
                 return self._fallback_response()
             
             # Clean base64 data
             clean_base64 = base64_data
-            mime_type = "image/jpeg"
-            
             if ',' in clean_base64:
-                header, clean_base64 = clean_base64.split(',', 1)
-                if 'image/png' in header:
-                    mime_type = 'image/png'
-                elif 'image/webp' in header:
-                    mime_type = 'image/webp'
+                clean_base64 = clean_base64.split(',', 1)[1]
             
-            image_url = f"data:{mime_type};base64,{clean_base64}"
+            # Create new LlmChat instance
+            session_id = str(uuid.uuid4())
+            chat = LlmChat(
+                api_key=self.api_key,
+                session_id=session_id,
+                system_message="You are a medical image classification assistant. Always respond with valid JSON."
+            ).with_model(self.model_provider, self.model_name)
             
-            messages = [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": IMAGE_CLASSIFICATION_PROMPT},
-                        {
-                            "type": "image_url",
-                            "image_url": {"url": image_url, "detail": "low"}
-                        }
-                    ]
-                }
-            ]
+            # Create image content
+            image_content = ImageContent(image_base64=clean_base64)
             
-            response = self.client.chat.completions.create(
-                model=self.model_name,
-                messages=messages,
-                max_tokens=500,
-                temperature=0.3
+            # Create message with image
+            llm_message = UserMessage(
+                text=IMAGE_CLASSIFICATION_PROMPT,
+                file_contents=[image_content]
             )
             
-            response_text = response.choices[0].message.content
+            # Get AI response
+            response_text = await chat.send_message(llm_message)
             
             # Parse JSON response
             try:
