@@ -11,7 +11,6 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-import torch
 import easyocr
 from PIL import Image
 from dotenv import load_dotenv
