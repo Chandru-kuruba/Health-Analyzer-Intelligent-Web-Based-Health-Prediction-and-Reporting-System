@@ -104,7 +104,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+from routes.image_routes import router as image_router
+app.include_router(image_router)
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,

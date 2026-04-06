@@ -1,36 +1,44 @@
-import axios from 'axios';
+import axios from "axios";
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+const API_BASE = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 export const imageApi = {
-  // Analyze medical image
-  analyzeImage: async (imageData, token) => {
-    const response = await axios.post(
-      `${API_URL}/api/image/analyze`,
-      { image_data: imageData },
-      { 
+
+  // analyze medical image
+  analyzeImage: async (base64Image, token) => {
+    const res = await axios.post(
+      `${API_BASE}/image/analyze`,
+      { image_data: base64Image },
+      {
         headers: { Authorization: `Bearer ${token}` },
-        timeout: 120000 // 2 min timeout for image analysis
+        timeout: 120000
       }
     );
-    return response.data;
+
+    return res.data;
   },
 
-  // Get all image analyses for user
+  // get all analyses
   getAnalyses: async (token) => {
-    const response = await axios.get(
-      `${API_URL}/api/image/analyses`,
-      { headers: { Authorization: `Bearer ${token}` } }
+    const res = await axios.get(
+      `${API_BASE}/image/analyses`,
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
     );
-    return response.data;
+
+    return res.data;
   },
 
-  // Get single analysis
+  // get single analysis
   getAnalysis: async (analysisId, token) => {
-    const response = await axios.get(
-      `${API_URL}/api/image/analyses/${analysisId}`,
-      { headers: { Authorization: `Bearer ${token}` } }
+    const res = await axios.get(
+      `${API_BASE}/image/analyses/${analysisId}`,
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
     );
-    return response.data;
+
+    return res.data;
   }
 };

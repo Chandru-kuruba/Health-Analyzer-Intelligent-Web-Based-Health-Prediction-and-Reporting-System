@@ -157,3 +157,23 @@ async def get_image_analysis(
         analysis['created_at'] = datetime.fromisoformat(analysis['created_at'])
     
     return analysis
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+from services.image_analysis_service import ImageAnalysisService
+
+router = APIRouter(prefix="/api/image", tags=["image-analysis"])
+service = ImageAnalysisService()
+
+
+class AnalyzeImageRequest(BaseModel):
+    image_data: str  # base64
+
+
+@router.post("/analyze")
+async def analyze_image(payload: AnalyzeImageRequest):
+    try:
+        return await service.analyze_image(payload.image_data)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to analyze image")
