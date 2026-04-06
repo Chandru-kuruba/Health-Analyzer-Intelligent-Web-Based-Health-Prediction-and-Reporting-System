@@ -11,7 +11,6 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-import easyocr
 from PIL import Image
 from dotenv import load_dotenv
 from open_clip import create_model_from_pretrained, get_tokenizer
